@@ -110,51 +110,33 @@
       el.classList.add('flash');
     }
 
-    async function tryWise() {
-      // Wise public rate API — no key needed, CORS ok, real forex mid-market rate
-      const [r1, r2] = await Promise.all([
-        fetch('https://wise.com/rates/live?source=USD&target=ILS'),
-        fetch('https://wise.com/rates/live?source=EUR&target=ILS')
+    // שימוש בפרוקסי אמין יותר עבור GitHub Pages
+    async function fetchWithProxy(url) {
+      // הוספת זמן נוכחי כדי למנוע מהדפדפן להביא תוצאה ישנה מהזיכרון
+      const cacheBuster = `&t=${new Date().getTime()}`;
+      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url + cacheBuster)}`;
+      const response = await fetch(proxy);
+      const data = await response.json();
+      // allorigins מחזיר את התשובה בתוך שדה שנקרא contents כטקסט
+      return JSON.parse(data.contents);
+    }
+
+    async function tryYahoo() {
+      const usdUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d';
+      const eurUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/EURILS=X?interval=1m&range=1d';
+      const eurusdUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1m&range=1d';
+
+      const [d1, d2, d3] = await Promise.all([
+        fetchWithProxy(usdUrl),
+        fetchWithProxy(eurUrl),
+        fetchWithProxy(eurusdUrl)
       ]);
-      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-      return { usd: d1.value, eur: d2.value };
-    }
 
-    async function tryGecko() {
-      // Coingecko has a fx endpoint that returns real mid-market rates
-      const r = await fetch('https://api.coingecko.com/api/v3/exchange_rates');
-      const d = await r.json();
-      // rates are relative to BTC, so cross via USD
-      const btcUsd = d.rates.usd.value;
-      const btcIls = d.rates.ils ? d.rates.ils.value : null;
-      const btcEur = d.rates.eur.value;
-      if (!btcIls) throw new Error('no ILS');
-      return { usd: btcIls / btcUsd, eur: btcIls / btcEur };
-    }
-
-    async function tryCorsproxy(url) {
-      const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
-      const r = await fetch(proxy);
-      return r;
-    }
-
-    async function tryYahooViaProxy() {
-      const url = 'https://query2.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d';
-      const r = await tryCorsproxy(url);
-      const d = await r.json();
-      const usd = d.chart.result[0].meta.regularMarketPrice;
-
-      const url2 = 'https://query2.finance.yahoo.com/v8/finance/chart/EURILS=X?interval=1m&range=1d';
-      const r2 = await tryCorsproxy(url2);
-      const d2 = await r2.json();
-      const eur = d2.chart.result[0].meta.regularMarketPrice;
-
-      const url3 = 'https://query2.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1m&range=1d';
-      const r3 = await tryCorsproxy(url3);
-      const d3 = await r3.json();
-      const eurusd = d3.chart.result[0].meta.regularMarketPrice;
-
-      return { usd, eur, eurusd };
+      return {
+        usd: d1.chart.result[0].meta.regularMarketPrice,
+        eur: d2.chart.result[0].meta.regularMarketPrice,
+        eurusd: d3.chart.result[0].meta.regularMarketPrice
+      };
     }
 
     async function fetchRates() {
@@ -164,45 +146,30 @@
       btn.disabled = true;
       errEl.style.display = 'none';
 
-      const attempts = [
-        { name: 'Yahoo Finance', fn: tryYahooViaProxy },
-        { name: 'Wise', fn: tryWise },
-        { name: 'CoinGecko FX', fn: tryGecko },
-      ];
+      try {
+        const { usd, eur, eurusd } = await tryYahoo();
+        
+        const usdEl = document.getElementById('usd-rate');
+        const eurEl = document.getElementById('eur-rate');
 
-      let success = false;
-      const errors = [];
+        // בדיקה אם השער השתנה כדי להפעיל אנימציה
+        if (prevUsd !== null && prevUsd !== usd) flash('usd-rate');
+        if (prevEur !== null && prevEur !== eur) flash('eur-rate');
+        
+        prevUsd = usd; prevEur = eur;
 
-      for (const { name, fn } of attempts) {
-        try {
-          const { usd, eur, eurusd } = await fn();
-          if (!usd || !eur || isNaN(usd) || isNaN(eur)) throw new Error('ערכים לא תקינים');
+        usdEl.textContent = usd.toFixed(3);
+        eurEl.textContent = eur.toFixed(3);
+        document.getElementById('eurusd-rate').textContent = eurusd ? eurusd.toFixed(4) : (eur / usd).toFixed(4);
 
-          const usdEl = document.getElementById('usd-rate');
-          const eurEl = document.getElementById('eur-rate');
+        const now = new Date();
+        document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' · ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('source-label').textContent = 'נתונים מ־Yahoo Finance · שער חי';
 
-          if (prevUsd !== null && parseFloat(usdEl.textContent) !== parseFloat(usd.toFixed(3))) flash('usd-rate');
-          if (prevEur !== null && parseFloat(eurEl.textContent) !== parseFloat(eur.toFixed(3))) flash('eur-rate');
-          prevUsd = usd; prevEur = eur;
-
-          usdEl.textContent = usd.toFixed(3);
-          eurEl.textContent = eur.toFixed(3);
-          document.getElementById('eurusd-rate').textContent = eurusd ? eurusd.toFixed(4) : (eur / usd).toFixed(4);
-
-          const now = new Date();
-          document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' · ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-          document.getElementById('source-label').textContent = 'נתונים מ־' + name + ' · שער פורקס חי';
-
-          success = true;
-          break;
-        } catch(e) {
-          errors.push(name + ': ' + e.message);
-        }
-      }
-
-      if (!success) {
-        errEl.textContent = 'נכשל: ' + errors.join(' | ');
+      } catch(e) {
+        console.error(e);
+        errEl.textContent = 'שגיאת עדכון: וודא שיש חיבור לאינטרנט';
         errEl.style.display = 'block';
       }
 
@@ -215,7 +182,8 @@
     });
 
     fetchRates();
+    // רענון אוטומטי כל דקה
     setInterval(fetchRates, 60 * 1000);
-  </script>
+</script>
 </body>
 </html>
