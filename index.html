@@ -104,86 +104,86 @@
     let prevUsd = null, prevEur = null;
 
     function flash(id) {
-      const el = document.getElementById(id);
-      el.classList.remove('flash');
-      void el.offsetWidth;
-      el.classList.add('flash');
+        const el = document.getElementById(id);
+        el.classList.remove('flash');
+        void el.offsetWidth;
+        el.classList.add('flash');
     }
 
-    // שימוש בפרוקסי אמין יותר עבור GitHub Pages
-    async function fetchWithProxy(url) {
-      // הוספת זמן נוכחי כדי למנוע מהדפדפן להביא תוצאה ישנה מהזיכרון
-      const cacheBuster = `&t=${new Date().getTime()}`;
-      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url + cacheBuster)}`;
-      const response = await fetch(proxy);
-      const data = await response.json();
-      // allorigins מחזיר את התשובה בתוך שדה שנקרא contents כטקסט
-      return JSON.parse(data.contents);
-    }
-
-    async function tryYahoo() {
-      const usdUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d';
-      const eurUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/EURILS=X?interval=1m&range=1d';
-      const eurusdUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?interval=1m&range=1d';
-
-      const [d1, d2, d3] = await Promise.all([
-        fetchWithProxy(usdUrl),
-        fetchWithProxy(eurUrl),
-        fetchWithProxy(eurusdUrl)
-      ]);
-
-      return {
-        usd: d1.chart.result[0].meta.regularMarketPrice,
-        eur: d2.chart.result[0].meta.regularMarketPrice,
-        eurusd: d3.chart.result[0].meta.regularMarketPrice
-      };
+    // פונקציית עזר להבאת נתונים עם הגבלת זמן (Timeout)
+    async function fetchWithTimeout(url, timeout = 10000) {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            // משתמשים בפרוקסי מהיר יותר (codetabs)
+            const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url + '&t=' + Date.now())}`;
+            const response = await fetch(proxyUrl, { signal: controller.signal });
+            clearTimeout(id);
+            return await response.json();
+        } catch (e) {
+            clearTimeout(id);
+            throw e;
+        }
     }
 
     async function fetchRates() {
-      const btn = document.getElementById('refresh-btn');
-      const errEl = document.getElementById('error-msg');
-      btn.textContent = 'טוען...';
-      btn.disabled = true;
-      errEl.style.display = 'none';
+        const btn = document.getElementById('refresh-btn');
+        const errEl = document.getElementById('error-msg');
+        btn.textContent = 'טוען...';
+        btn.disabled = true;
+        errEl.style.display = 'none';
 
-      try {
-        const { usd, eur, eurusd } = await tryYahoo();
-        
-        const usdEl = document.getElementById('usd-rate');
-        const eurEl = document.getElementById('eur-rate');
+        const usdUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d';
+        const eurUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/EURILS=X?interval=1m&range=1d';
 
-        // בדיקה אם השער השתנה כדי להפעיל אנימציה
-        if (prevUsd !== null && prevUsd !== usd) flash('usd-rate');
-        if (prevEur !== null && prevEur !== eur) flash('eur-rate');
-        
-        prevUsd = usd; prevEur = eur;
+        try {
+            // מנסים להביא את הנתונים
+            const [usdData, eurData] = await Promise.all([
+                fetchWithTimeout(usdUrl),
+                fetchWithTimeout(eurUrl)
+            ]);
 
-        usdEl.textContent = usd.toFixed(3);
-        eurEl.textContent = eur.toFixed(3);
-        document.getElementById('eurusd-rate').textContent = eurusd ? eurusd.toFixed(4) : (eur / usd).toFixed(4);
+            const usd = usdData.chart.result[0].meta.regularMarketPrice;
+            const eur = eurData.chart.result[0].meta.regularMarketPrice;
 
-        const now = new Date();
-        document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' · ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('source-label').textContent = 'נתונים מ־Yahoo Finance · שער חי';
+            // עדכון ממשק
+            const usdEl = document.getElementById('usd-rate');
+            const eurEl = document.getElementById('eur-rate');
 
-      } catch(e) {
-        console.error(e);
-        errEl.textContent = 'שגיאת עדכון: וודא שיש חיבור לאינטרנט';
-        errEl.style.display = 'block';
-      }
+            if (prevUsd !== null && prevUsd.toFixed(3) !== usd.toFixed(3)) flash('usd-rate');
+            if (prevEur !== null && prevEur.toFixed(3) !== eur.toFixed(3)) flash('eur-rate');
+            
+            prevUsd = usd; prevEur = eur;
 
-      btn.textContent = 'רענן שערים';
-      btn.disabled = false;
+            usdEl.textContent = usd.toFixed(3);
+            eurEl.textContent = eur.toFixed(3);
+            document.getElementById('eurusd-rate').textContent = (eur / usd).toFixed(4);
+
+            const now = new Date();
+            document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' · ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('source-label').textContent = 'נתונים חיים מ־Yahoo Finance';
+
+        } catch(e) {
+            console.error('Fetch error:', e);
+            errEl.textContent = 'השרת עמוס, נסה שוב בעוד רגע';
+            errEl.style.display = 'block';
+        }
+
+        btn.textContent = 'רענן שערים';
+        btn.disabled = false;
     }
 
+    // רענון כשחוזרים לאפליקציה
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') fetchRates();
+        if (document.visibilityState === 'visible') fetchRates();
     });
 
+    // הפעלה ראשונית
     fetchRates();
     // רענון אוטומטי כל דקה
-    setInterval(fetchRates, 60 * 1000);
+    setInterval(fetchRates, 60000);
 </script>
 </body>
 </html>
