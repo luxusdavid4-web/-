@@ -101,7 +101,7 @@
   </div>
 
   <script>
-    let prevUsd = null, prevEur = null;
+    let prevUsd = null;
 
     function flash(id) {
         const el = document.getElementById(id);
@@ -118,45 +118,38 @@
         errEl.style.display = 'none';
 
         try {
-            let usd, eur;
+            // שימוש ב-API שלא דורש פרוקסי ועובד מעולה ב-GitHub
+            const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,EUR');
+            if (!response.ok) throw new Error('Network error');
             
-            // ניסיון א': להביא נתונים מ-Frankfurter (יציב מאוד, ללא פרוקסי)
-            try {
-                const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,EUR');
-                const data = await response.json();
-                usd = data.rates.ILS;
-                eur = (1 / data.rates.EUR) * data.rates.ILS;
-                document.getElementById('source-label').textContent = 'מקור: Frankfurter (שער יציג)';
-            } catch (e) {
-                // ניסיון ב': אם א' נכשל, מנסים את Yahoo דרך פרוקסי חלופי
-                const proxy = 'https://api.allorigins.win/get?url=';
-                const target = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d');
-                const res = await fetch(proxy + target + '&t=' + Date.now());
-                const json = await res.json();
-                const result = JSON.parse(json.contents);
-                usd = result.chart.result[0].meta.regularMarketPrice;
-                // חישוב יורו משוער או משיכה נוספת
-                eur = usd * 1.08; // הערכה גסה למקרה חירום
-                document.getElementById('source-label').textContent = 'מקור: Yahoo Finance (פרוקסי)';
-            }
+            const data = await response.json();
+            
+            const usd = data.rates.ILS; // שער דולר-שקל
+            const eurToUsd = 1 / data.rates.EUR; // שער יורו-דולר
+            const eur = eurToUsd * usd; // שער יורו-שקל
 
-            // עדכון הממשק
             const usdEl = document.getElementById('usd-rate');
             const eurEl = document.getElementById('eur-rate');
 
-            if (prevUsd !== null && prevUsd.toFixed(2) !== usd.toFixed(2)) flash('usd-rate');
+            if (prevUsd !== null && prevUsd.toFixed(2) !== usd.toFixed(2)) {
+                flash('usd-rate');
+                flash('eur-rate');
+            }
             
+            prevUsd = usd;
+
             usdEl.textContent = usd.toFixed(3);
             eurEl.textContent = eur.toFixed(3);
-            document.getElementById('eurusd-rate').textContent = (eur / usd).toFixed(4);
+            document.getElementById('eurusd-rate').textContent = eurToUsd.toFixed(4);
 
             const now = new Date();
             document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL');
             document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL') + ' · ' + now.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+            document.getElementById('source-label').textContent = 'מקור: Frankfurter (שער יציג)';
 
         } catch (err) {
-            console.error(err);
-            errEl.textContent = 'שגיאת תקשורת. נסה שוב בעוד כמה שניות.';
+            console.error('Error:', err);
+            errEl.textContent = 'שגיאה בחיבור. נסה שוב בעוד רגע.';
             errEl.style.display = 'block';
         } finally {
             btn.textContent = 'רענן שערים';
