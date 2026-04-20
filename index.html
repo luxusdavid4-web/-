@@ -23,92 +23,84 @@
     .app { width: 100%; max-width: 400px; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
     header h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; }
-    #update-time { font-size: 13px; color: #666; }
-    
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    #update-time { font-size: 12px; color: #888; }
+    .card { background: #fff; border-radius: 16px; border: 1px solid #e8e8e4; padding: 1.25rem; margin-bottom: 12px; }
+    .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .currency-symbol { font-size: 22px; font-weight: 600; }
+    .currency-symbol.usd { color: #2575c9; }
+    .currency-symbol.eur { color: #0f8060; }
+    .currency-name { font-size: 13px; color: #888; }
+    .rate-row { display: flex; align-items: baseline; justify-content: space-between; }
+    .rate { font-size: 36px; font-weight: 600; color: #1a1a1a; letter-spacing: -1px; }
+    .rate-label { font-size: 13px; color: #aaa; }
+    .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+    .mini-card { background: #eeeee8; border-radius: 12px; padding: 0.85rem 1rem; }
+    .mini-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .mini-value { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+    button { width: 100%; padding: 12px; font-size: 15px; font-weight: 500; border-radius: 12px; border: 1px solid #ddd; background: #fff; color: #1a1a1a; cursor: pointer; }
+    button:active { background: #f0f0eb; }
+    button:disabled { opacity: 0.5; }
+    .source { font-size: 11px; color: #bbb; text-align: center; margin-top: 1rem; }
+    .error-msg { font-size: 11px; color: #c0392b; text-align: center; margin-top: 8px; background: #fdf0f0; border-radius: 8px; padding: 8px; display: none; }
+    @keyframes flash { 0%{opacity:0.2} 100%{opacity:1} }
+    .flash { animation: flash 0.6s ease-out; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a18; }
+      .card { background: #252522; border-color: #333; }
+      header h1 { color: #f0f0ec; }
+      .rate { color: #f0f0ec; }
+      .mini-card { background: #2e2e2a; }
+      .mini-value { color: #f0f0ec; }
+      button { background: #252522; border-color: #444; color: #f0f0ec; }
     }
-    .rate-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-    .rate-row:last-child { margin-bottom: 0; }
-    .currency { display: flex; align-items: center; gap: 12px; }
-    .flag { font-size: 24px; }
-    .code { font-weight: 600; color: #1a1a1a; }
-    .rate { font-family: 'SF Mono', monospace; font-size: 24px; font-weight: 700; color: #1a1a1a; }
-    
-    .refresh-container { margin-top: 1rem; text-align: center; }
-    #refresh-btn {
-      background: #1a1a1a;
-      color: #fff;
-      border: none;
-      padding: 0.8rem 2rem;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      transition: opacity 0.2s;
-    }
-    #refresh-btn:disabled { opacity: 0.5; }
-    
-    #last-updated-row { font-size: 12px; color: #888; text-align: center; margin-top: 10px; }
-    #source-label { font-size: 11px; color: #aaa; margin-top: 4px; display: block; }
-    #error-msg { color: #d93025; font-size: 13px; margin-top: 10px; display: none; }
-
-    @keyframes flashGreen {
-      0% { background-color: transparent; }
-      50% { background-color: rgba(52, 199, 89, 0.2); }
-      100% { background-color: transparent; }
-    }
-    .flash { animation: flashGreen 0.8s ease-out; border-radius: 4px; }
   </style>
 </head>
 <body>
-
   <div class="app">
     <header>
       <h1>שערי חליפין</h1>
-      <div id="update-time">טוען...</div>
+      <span id="update-time">טוען...</span>
     </header>
 
     <div class="card">
-      <div class="rate-row">
-        <div class="currency">
-          <span class="flag">🇺🇸</span>
-          <span class="code">USD / ILS</span>
-        </div>
-        <div id="usd-rate" class="rate">---</div>
+      <div class="card-header">
+        <span class="currency-symbol usd">$</span>
+        <span class="currency-name">דולר אמריקאי · USD</span>
       </div>
       <div class="rate-row">
-        <div class="currency">
-          <span class="flag">🇪🇺</span>
-          <span class="code">EUR / ILS</span>
-        </div>
-        <div id="eur-rate" class="rate">---</div>
+        <span class="rate" id="usd-rate">—</span>
+        <span class="rate-label">₪ לדולר</span>
       </div>
     </div>
 
-    <div class="card" style="padding: 1rem 1.5rem;">
-      <div class="rate-row" style="margin: 0; font-size: 14px; color: #666;">
-        <span>EUR / USD</span>
-        <span id="eurusd-rate" style="font-weight: 600;">---</span>
+    <div class="card">
+      <div class="card-header">
+        <span class="currency-symbol eur">€</span>
+        <span class="currency-name">אירו · EUR</span>
+      </div>
+      <div class="rate-row">
+        <span class="rate" id="eur-rate">—</span>
+        <span class="rate-label">₪ לאירו</span>
       </div>
     </div>
 
-    <div class="refresh-container">
-      <button id="refresh-btn" onclick="fetchRates()">רענן שערים</button>
-      <div id="error-msg"></div>
-      <div id="last-updated-row">
-        עודכן לאחרונה: <span id="last-updated">--:--:--</span>
-        <span id="source-label">טוען נתונים...</span>
+    <div class="mini-grid">
+      <div class="mini-card">
+        <div class="mini-label">€/$ כעת</div>
+        <div class="mini-value" id="eurusd-rate">—</div>
+      </div>
+      <div class="mini-card">
+        <div class="mini-label">עדכון אחרון</div>
+        <div class="mini-value" id="last-updated">—</div>
       </div>
     </div>
+
+    <button onclick="fetchRates()" id="refresh-btn">רענן שערים</button>
+    <div class="error-msg" id="error-msg"></div>
+    <p class="source" id="source-label">שער פורקס חי · מתעדכן כל דקה</p>
   </div>
 
-  <script>
+   <script>
     let prevUsd = null, prevEur = null;
 
     function flash(id) {
@@ -118,6 +110,51 @@
       el.classList.add('flash');
     }
 
+    async function tryWise() {
+      // Wise public rate API — no key needed, CORS ok, real forex mid-market rate
+      const [r1, r2] = await Promise.all([
+        fetch('https://wise.com/rates/live?source=USD&target=ILS'),
+        fetch('https://wise.com/rates/live?source=EUR&target=ILS')
+      ]);
+      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      return { usd: d1.value, eur: d2.value };
+    }
+
+    async function tryGecko() {
+      // Coingecko has a fx endpoint that returns real mid-market rates
+      const r = await fetch('https://api.coingecko.com/api/v3/exchange_rates');
+      const d = await r.json();
+      // rates are relative to BTC, so cross via USD
+      const btcUsd = d.rates.usd.value;
+      const btcIls = d.rates.ils ? d.rates.ils.value : null;
+      const btcEur = d.rates.eur.value;
+      if (!btcIls) throw new Error('no ILS');
+      return { usd: btcIls / btcUsd, eur: btcIls / btcEur };
+    }
+
+    function bust() { return (url.includes('?') ? '&' : '?') + '_=' + Date.now(); }
+
+    async function proxyFetch(url) {
+      const target = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+      const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(target);
+      const r = await fetch(proxy, { cache: 'no-store' });
+      const outer = await r.json();
+      return JSON.parse(outer.contents);
+    }
+
+    async function tryYahooViaProxy() {
+      const base = 'https://query2.finance.yahoo.com/v8/finance/chart/';
+      const [d, d2, d3] = await Promise.all([
+        proxyFetch(base + 'USDILS=X?interval=1m&range=1d'),
+        proxyFetch(base + 'EURILS=X?interval=1m&range=1d'),
+        proxyFetch(base + 'EURUSD=X?interval=1m&range=1d'),
+      ]);
+      const usd    = d.chart.result[0].meta.regularMarketPrice;
+      const eur    = d2.chart.result[0].meta.regularMarketPrice;
+      const eurusd = d3.chart.result[0].meta.regularMarketPrice;
+      return { usd, eur, eurusd };
+    }
+
     async function fetchRates() {
       const btn = document.getElementById('refresh-btn');
       const errEl = document.getElementById('error-msg');
@@ -125,68 +162,45 @@
       btn.disabled = true;
       errEl.style.display = 'none';
 
-      // הוספת Timestamp כדי למנוע Cache (שמירת נתונים ישנים בדפדפן)
-      const ts = new Date().getTime();
-      
-      const sources = [
-        { 
-          name: 'Yahoo Finance', 
-          usd: `https://query1.finance.yahoo.com/v8/finance/chart/USDILS=X?interval=1m&range=1d&t=${ts}`,
-          eur: `https://query1.finance.yahoo.com/v8/finance/chart/EURILS=X?interval=1m&range=1d&t=${ts}`
-        }
+      const attempts = [
+        { name: 'Yahoo Finance', fn: tryYahooViaProxy },
+        { name: 'Wise', fn: tryWise },
+        { name: 'CoinGecko FX', fn: tryGecko },
       ];
 
       let success = false;
-      let errors = [];
+      const errors = [];
 
-      for (let source of sources) {
+      for (const { name, fn } of attempts) {
         try {
-          // שימוש בפרוקסי יציב עבור GitHub Pages
-          const proxy = 'https://api.allorigins.win/get?url=';
-          
-          const [usdRes, eurRes] = await Promise.all([
-            fetch(proxy + encodeURIComponent(source.usd)),
-            fetch(proxy + encodeURIComponent(source.eur))
-          ]);
-          
-          const usdDataRaw = await usdRes.json();
-          const eurDataRaw = await eurRes.json();
-          
-          // חילוץ הנתונים מהעטיפה של allorigins
-          const usdData = JSON.parse(usdDataRaw.contents);
-          const eurData = JSON.parse(eurDataRaw.contents);
-          
-          const usd = usdData.chart.result[0].meta.regularMarketPrice;
-          const eur = eurData.chart.result[0].meta.regularMarketPrice;
+          const { usd, eur, eurusd } = await fn();
+          if (!usd || !eur || isNaN(usd) || isNaN(eur)) throw new Error('ערכים לא תקינים');
 
           const usdEl = document.getElementById('usd-rate');
           const eurEl = document.getElementById('eur-rate');
 
-          // אנימציה אם המחיר השתנה
-          if (prevUsd !== null && prevUsd.toFixed(3) !== usd.toFixed(3)) flash('usd-rate');
-          if (prevEur !== null && prevEur.toFixed(3) !== eur.toFixed(3)) flash('eur-rate');
-          
+          if (prevUsd !== null && parseFloat(usdEl.textContent) !== parseFloat(usd.toFixed(3))) flash('usd-rate');
+          if (prevEur !== null && parseFloat(eurEl.textContent) !== parseFloat(eur.toFixed(3))) flash('eur-rate');
           prevUsd = usd; prevEur = eur;
 
           usdEl.textContent = usd.toFixed(3);
           eurEl.textContent = eur.toFixed(3);
-          document.getElementById('eurusd-rate').textContent = (eur / usd).toFixed(4);
+          document.getElementById('eurusd-rate').textContent = eurusd ? eurusd.toFixed(4) : (eur / usd).toFixed(4);
 
           const now = new Date();
           document.getElementById('last-updated').textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           document.getElementById('update-time').textContent = now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) + ' · ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-          document.getElementById('source-label').textContent = 'מקור: Yahoo Finance · שער עדכני';
+          document.getElementById('source-label').textContent = 'נתונים מ־' + name + ' · שער פורקס חי';
 
           success = true;
-          break; 
+          break;
         } catch(e) {
-          console.error(e);
-          errors.push(source.name + ': שגיאת תקשורת');
+          errors.push(name + ': ' + e.message);
         }
       }
 
       if (!success) {
-        errEl.textContent = 'נכשל בעדכון הנתונים. נסה שוב.';
+        errEl.textContent = 'נכשל: ' + errors.join(' | ');
         errEl.style.display = 'block';
       }
 
@@ -194,14 +208,12 @@
       btn.disabled = false;
     }
 
-    // רענון אוטומטי כשחוזרים לאפליקציה
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') fetchRates();
     });
 
     fetchRates();
-    // רענון אוטומטי כל 2 דקות
-    setInterval(fetchRates, 120000);
+    setInterval(fetchRates, 60 * 1000);
   </script>
 </body>
 </html>
